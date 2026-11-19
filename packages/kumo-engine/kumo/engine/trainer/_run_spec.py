@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 r"""A `Trainer.fit` as a tracked run's `RunSpec`."""
 
+import logging
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,11 @@ from kumo_core.summaries import Scalar, Summary
 from kumo.engine._run_names import fit_name, model_label
 from kumo.engine._text import entity, metric_key
 from kumo.engine._tracking import RunSpec, logged_names, metric_name
+
+logger = logging.getLogger(__name__)
+
+#: The fit run's ``result.summary()`` report, as a standalone page.
+SUMMARY_FILE = 'summary.html'
 
 
 @dataclass(frozen=True)
@@ -57,11 +63,25 @@ def fitted_spec(spec: RunSpec, result: Any,
     provenance = Path(result.bundle_dir) / PROVENANCE_FILE
     if provenance.is_file():
         artifacts[PROVENANCE_FILE] = provenance.read_text(encoding='utf-8')
+    artifacts.update(summary_artifacts(result, spec.model_label))
     return replace(
         spec, metrics=holdout_metrics(result),
         parents={**spec.parents, 'bundle_id': result.id,
                  **_registered(result.registered_model)},
         artifacts=artifacts, summaries=summaries)
+
+
+def summary_artifacts(result: Any,
+                      label: Optional[str] = None) -> Dict[str, str]:
+    r"""``result.summary()`` as a page, or nothing if it cannot be
+    rendered."""
+    try:
+        page = result.summary().to_html(
+            f'{label} training summary' if label else 'Training summary')
+    except Exception as error:  # The run is still recorded without it.
+        logger.warning('Could not render the training summary: %s', error)
+        return {}
+    return {SUMMARY_FILE: page}
 
 
 def holdout_metrics(result: Any) -> Dict[str, float]:

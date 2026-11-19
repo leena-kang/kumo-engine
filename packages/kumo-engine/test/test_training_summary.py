@@ -550,3 +550,33 @@ def test_labels_are_escaped(result):
     _config(result, tune_metric='<script>')
     html = result.summary()._repr_html_()
     assert html.count('<script>') == 1  # Only the report's own script.
+
+
+def test_report_saves_as_a_standalone_page(result, tmp_path):
+    summary = result.summary()
+    page = summary.save(tmp_path / 'report.html', 'a<b training summary')
+
+    text = page.read_text(encoding='utf-8')
+    assert text.startswith('<!doctype html><html lang="en"><head>')
+    assert '<title>a&lt;b training summary</title>' in text
+    assert text.endswith(f'<body>{summary._repr_html_()}</body></html>')
+
+
+def test_a_tracked_fit_logs_its_report_as_a_page(result):
+    from kumo.engine.trainer._run_spec import SUMMARY_FILE, summary_artifacts
+
+    assert summary_artifacts(result, 'churn') == {
+        SUMMARY_FILE: result.summary().to_html('churn training summary')
+    }
+
+
+def test_a_report_that_cannot_render_is_left_out(caplog):
+    from kumo.engine.trainer._run_spec import summary_artifacts
+
+    class Broken:
+        def summary(self):
+            raise OSError('scratch directory is gone')
+
+    assert summary_artifacts(Broken()) == {}
+    assert 'Could not render the training summary: scratch directory is gone' \
+        in caplog.text

@@ -59,6 +59,24 @@ class TrainingSummary:
     def __repr__(self) -> str:
         return self._text
 
+    def to_html(self, title: str = 'Training summary') -> str:
+        """Return the report as a standalone, interactive HTML page.
+
+        The page has no external dependencies, so it opens in any browser
+        and in a tracker's artifact viewer.
+        """
+        return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
+                '<meta name="viewport" content="width=device-width,'
+                f'initial-scale=1"><title>{escape(title)}</title><style>'
+                'html,body{margin:0;background:#fff}body{padding:16px}'
+                f'</style></head><body>{self._html}</body></html>')
+
+    def save(self, path: Any, title: str = 'Training summary') -> Path:
+        """Write :meth:`to_html` to ``path`` and return the path."""
+        path = Path(path)
+        path.write_text(self.to_html(title), encoding='utf-8')
+        return path
+
 
 def _number(value: Any) -> Optional[float]:
     return (float(value) if isinstance(value, (int, float))

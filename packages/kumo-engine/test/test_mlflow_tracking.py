@@ -48,7 +48,7 @@ from kumo.engine._tracking import (
     track_prediction,
     tracking_ref,
 )
-from kumo.engine.trainer._run_spec import fit_spec
+from kumo.engine.trainer._run_spec import SUMMARY_FILE, fit_spec
 
 mlflow = pytest.importorskip('mlflow')
 autologging_utils = pytest.importorskip('mlflow.utils.autologging_utils')
@@ -146,6 +146,11 @@ def test_fit_logs_a_run_per_fit_and_per_trial(table_and_snapshot, quick_plan,
     assert health['data'][0][:2] == ['ents', 400]
     assert {name: metrics[name] for name in tested} == tested
     assert 'off for the rest of this run' not in caplog.text
+    page = mlflow.artifacts.load_text(
+        f'{parent.info.artifact_uri}/{SUMMARY_FILE}')
+    assert page.startswith('<!doctype html>')
+    assert result.summary()._repr_html_() in page
+    assert SUMMARY_FILE not in parent.data.tags['mlflow.note.content']
     ents, = parent.inputs.dataset_inputs
     assert (ents.dataset.name, ents.dataset.source_type) == ('ents', 'local')
     assert json.loads(ents.dataset.source) == {
