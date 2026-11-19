@@ -157,6 +157,7 @@ from kumo.engine.trainer.output_config import (
 
 if TYPE_CHECKING:
     from kumo.engine._monitoring import DriftReport, EvaluationResult
+    from kumo.engine.trainer._summary import TrainingSummary
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,18 @@ class TrainingResult:
     def id(self) -> Optional[str]:
         """The bundle id."""
         return self.bundle_id
+
+    def summary(self) -> 'TrainingSummary':
+        """Return a notebook report of the fit: evaluation and training.
+
+        Evaluation compares the recorded metrics across the training,
+        validation and holdout splits; training shows each experiment's
+        learning curves. Reads only recorded results: it never trains or
+        evaluates.
+        """
+        from kumo.engine.trainer._summary import training_summary
+
+        return training_summary(self)
 
     @property
     def metric_history(self) -> Optional[Dict[str, Any]]:
